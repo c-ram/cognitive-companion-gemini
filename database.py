@@ -30,7 +30,8 @@ class Rule(Base):
     # Prompts
     vision_prompt = Column(Text, default="Describe this image in detail.")
     logic_prompt = Column(Text, default="Based on the description, decide if an action is needed.")
-    feedback_template = Column(Text, default="Notification: {result}")
+    feedback_template = Column(Text, default="{result}")
+    gemini_live_prompt = Column(Text, default="{result}") # Prompt to generate live feedback for user in Tamil using Gemini Live API
     
     # Rate Limiting
     cool_off_minutes = Column(Integer, default=5) # Minutes to wait before re-triggering
@@ -66,6 +67,28 @@ class EventLog(Base):
     vision_response = Column(Text)
     logic_response = Column(Text)
     status = Column(String) # 'processed', 'failed', 'skipped'
+
+class RoomOccupancy(Base):
+    __tablename__ = "room_occupancy"
+
+    id = Column(Integer, primary_key=True, index=True)
+    sensor_id = Column(String, index=True)
+    room_name = Column(String, index=True)
+    start_time = Column(DateTime, default=datetime.utcnow)
+    end_time = Column(DateTime, nullable=True)
+    is_active = Column(Boolean, default=True)
+
+class EmergencyAlert(Base):
+    __tablename__ = "emergency_alerts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    alert_type = Column(String) # e.g., 'bathroom_fall', 'loud_noise'
+    description = Column(String)
+    sensor_id = Column(String, nullable=True)
+    room_name = Column(String, nullable=True)
+    resolved = Column(Boolean, default=False)
+    assistance_needed = Column(Boolean, default=False)
 
 class ActiveImageState(Base):
     __tablename__ = "active_image_state"

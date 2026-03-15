@@ -9,12 +9,13 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, UploadFile, File, Request, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from config import settings
 from utils import process_video, call_vllm_cosmos, get_video_info, call_vllm_translate
-from database import init_db
+from database import init_db, SessionLocal, EmergencyAlert
 from scheduler import setup_scheduler
 from event_aggregator import EventAggregator
 from minio_utils import minio_client
@@ -23,7 +24,11 @@ from minio_utils import minio_client
 from routers.rules_router import router as rules_api_router
 from routers.sensors_router import router as sensors_api_router
 from routers.image_router import router as image_api_router
+from routers.admin_router import router as admin_api_router
 from routers.stream_router import router as stream_api_router
+from routers.ws_router import router as ws_api_router
+
+from integrations import EmailToSMSClient
 
 # --- Logging ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -37,10 +42,29 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(lifespan=lifespan)
+
+cors_origins = [
+    "https://domain.com",
+    "http://domain.com",
+]
+cors_env = os.getenv("CORS_ALLOW_ORIGINS", "")
+if cors_env:
+    cors_origins = [origin.strip() for origin in cors_env.split(",") if origin.strip()]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(rules_api_router)
 app.include_router(sensors_api_router)
 app.include_router(image_api_router)
+app.include_router(admin_api_router)
 app.include_router(stream_api_router)
+app.include_router(ws_api_router)
 
 # --- State ---
 event_aggregator = EventAggregator(batch_size=3, window_seconds=10, cooldown_seconds=60)
@@ -48,6 +72,12 @@ event_aggregator = EventAggregator(batch_size=3, window_seconds=10, cooldown_sec
 # --- Models ---
 class TranslationRequest(BaseModel):
     prompt: str = Field(..., min_length=1)
+
+class EmergencyAlertAction(BaseModel):
+    action: str = Field(..., min_length=1)
+
+# -- Clients ---
+email_sms_client = EmailToSMSClient()
 
 # --- Endpoints ---
 @app.post("/recamera")
@@ -81,6 +111,38 @@ async def handle_recamera_event(request: Request):
         return JSONResponse(status_code=400, content={"status": "error", "message": "Invalid payload"})
 
     return {"status": "ok"}
+
+@app.post("/emergency_alerts/{alert_id}/action")
+async def handle_emergency_alert_action(alert_id: int, payload: EmergencyAlertAction):
+    action = payload.action.strip().lower()
+    if action not in {"dismiss", "assist"}:
+        raise HTTPException(status_code=400, detail="Invalid action. Use 'dismiss' or 'assist'.")
+
+    session = SessionLocal()
+    try:
+        alert = session.query(EmergencyAlert).filter(EmergencyAlert.id == alert_id).first()
+        if not alert:
+            raise HTTPException(status_code=404, detail="Emergency alert not found.")
+
+        if action == "dismiss":
+            alert.resolved = True
+            alert.assistance_needed = False
+        elif action == "assist":
+            alert.assistance_needed = True
+            caretakers_sms = ["sriram@khoofia.com"] # Should be in config or DB
+            for to_email in caretakers_sms:
+                await email_sms_client.send_message(to_email, f"Assistance needed for alert: {alert.description}. Room: {alert.room_name}")
+
+        session.commit()
+        session.refresh(alert)
+        return {
+            "status": "ok",
+            "alert_id": alert.id,
+            "resolved": alert.resolved,
+            "assistance_needed": alert.assistance_needed
+        }
+    finally:
+        session.close()
 
 
 @app.post("/analyze")

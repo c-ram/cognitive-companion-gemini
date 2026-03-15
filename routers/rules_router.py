@@ -17,6 +17,7 @@ class RuleCreate(BaseModel):
     schedule_cron: Optional[str] = None
     vision_prompt: str = "Describe this image in detail."
     logic_prompt: str = "Based on the description, decide if an action is needed."
+    gemini_live_prompt: str = "Prompt for Gemini Live response."
     feedback_template: str = "Notification: {result}"
     cool_off_minutes: int = 5
     max_daily_triggers: int = 3
@@ -28,6 +29,7 @@ class RuleUpdate(BaseModel):
     schedule_cron: Optional[str] = None
     vision_prompt: Optional[str] = None
     logic_prompt: Optional[str] = None
+    gemini_live_prompt: Optional[str] = None
     feedback_template: Optional[str] = None
     cool_off_minutes: Optional[int] = None
     max_daily_triggers: Optional[int] = None

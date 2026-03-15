@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from database import SessionLocal, Rule
 from integrations import HomeAssistantClient, TTSClient
 from minio_utils import minio_client
+from sensor_polling import poll_homeassistant_sensors
 import asyncio
 import os
 
@@ -79,5 +80,18 @@ def setup_scheduler():
     finally:
         session.close()
     
+    # Schedule the HA sensor polling every 30 seconds
+    try:
+        scheduler.add_job(
+            poll_homeassistant_sensors,
+            'interval',
+            seconds=30,
+            id="ha_sensor_polling",
+            replace_existing=True
+        )
+        print("Scheduled HomeAssistant sensor polling loop.")
+    except Exception as e:
+        print(f"Failed to schedule HA polling loop: {e}")
+
     if not scheduler.running:
         scheduler.start()

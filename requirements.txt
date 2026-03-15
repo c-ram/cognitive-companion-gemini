@@ -14,3 +14,4 @@ edge-tts
 pydantic-settings
 Pillow
 Wand
+google-genai
