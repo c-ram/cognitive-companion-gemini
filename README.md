@@ -1,10 +1,18 @@
-# Cognitive Companion
+# Cognitive Companion with Gemini Live
 
 A privacy-first AI watchdog for multigenerational households, designed to support seniors facing early cognitive decline while preserving their independence and dignity.
 
 [▶️Long Introduction + Demo Video (8 minutes)](https://www.youtube.com/watch?v=l4DnkE6N7Lc)
 
 [▶️Short 4-minute Demo Video](https://www.youtube.com/watch?v=hIe1BMhOk3Y)
+
+## UI
+
+A [Vue 3 + Vuetify PWA UI](https://github.com/c-ram/cognitive-companion-gemini-ui) with:
+  - Live transcripts and audio playback of Gemini Live responses.
+  - Visual alert images.
+  - Emergency alerts with “I am okay” / “Need assistance” actions and auto-escalation.
+  - An audio visualizer + VAD calibration for mic input.
 
 ## Philosophy
 
