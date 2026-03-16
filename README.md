@@ -8,7 +8,7 @@ A privacy-first AI watchdog for multigenerational households, designed to suppor
 
 ## UI
 
-A [Vue 3 + Vuetify PWA UI](https://github.com/c-ram/cognitive-companion-gemini-ui) with:
+A [Progressive Web App](https://github.com/c-ram/cognitive-companion-gemini-ui) with:
   - Live transcripts and audio playback of Gemini Live responses.
   - Visual alert images.
   - Emergency alerts with “I am okay” / “Need assistance” actions and auto-escalation.
@@ -44,6 +44,65 @@ Cameras / Presence Sensors
 - **WhatsApp** - optional caretaker notifications via WhatsApp Business API
 - **Email-to-SMS** - optional caretaker notifications via carrier SMS gateway email
 
+
+### Architecture Diagram
+```mermaid
+flowchart LR
+%% Frontend
+U[User Senior/Caregiver]
+FB[Firebase Hosted<br/>cognitive-companion-ui]
+UI[PWA UI]
+
+  %% Backend K8s
+  subgraph K8S[Kubernetes Cluster]
+    API[ai-api-gateway<br/>FastAPI Deployment]
+    SVC[Service<br/>ai-api-gateway]
+    DB[SQLite DB]
+  end
+
+  %% Storage / IoT
+  CAM[Cameras]
+  PRES[Presence Sensors]
+  HA[Home Assistant]
+
+  %% AI
+  subgraph AI[AI Services]
+    COSMOS[Cosmos Reason 2]
+    GEMMA[Gemma3 ]
+  end
+
+
+GEMINI[Gemini Live API<br/>Audio + Realtime Agent]
+
+
+  %% Flows
+  U --> FB --> UI
+  UI <--> |HTTPS| SVC
+  UI <--> |WebSocket Audio| API
+
+  CAM --> API
+  PRES --> HA --> API
+
+  API --> COSMOS
+  API --> GEMMA
+
+
+  %% Emphasize Gemini Live
+  UI <==> |Realtime Audio + Transcripts| GEMINI
+  API <--> |Gemini Live Tasks / Prompts| GEMINI
+
+
+  API <--> DB
+
+
+
+
+  SVC --> API
+
+
+
+
+```
 
 ## Prerequisites
 
